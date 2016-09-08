@@ -2,6 +2,14 @@
 
 Snail Race is a two players-game. Players run a distance of 100m. The first player to arrive at position 100 has won the race. The running distance is 100m.
 
+This repo provides with various endpoints for the game front-end implementation
+
+# Setup and Installation
+ - Install Python and Google App Engine Launcher
+ - Clone this repo and Open the clone folder into Google App Engine Launcher
+ - Select project and click the Run button
+ - Run the app with the devserver using dev_appserver.py DIR, and ensure it's running by visiting the API Explorer - by default localhost:8080/_ah/api/explorer
+
 # Game Description
 
 The running distance is 100m. At the beginning of the game, each player position is set to 0.
