@@ -32,7 +32,7 @@ class Game(ndb.Model):
 
 
 class Position(ndb.Model):
-    """ This class describes a player"""
+    """ This class describes a player position"""
     game = ndb.KeyProperty(kind='Game')
     player = ndb.KeyProperty(kind='Player')
     position = ndb.IntegerProperty(default=0)
