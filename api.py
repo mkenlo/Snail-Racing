@@ -6,7 +6,7 @@ from models import (
     ListHistoryForm, ListGameHistory, RankingForm, ListRanking,
     Player, Game, GameHistory, Score, Position
 )
-from google.appengine.api import taskqueue
+
 from protorpc import message_types
 from protorpc import messages
 from protorpc import remote
@@ -194,10 +194,6 @@ class SnailRacingApi(remote.Service):
             game_status = "GAME OVER, YOU WON THE RACE!!!!!"
 
         opponent.put()
-        # Notify the opponent
-        taskqueue.add(url='/crons/notify_player',
-                      params={'username': opponent.player.get().username},
-                      name="Notify_Player")
         return MakeMoveForm(player=request.player, dice=request.dice,
                             position=player.position,
                             score=Score.query(
@@ -281,7 +277,8 @@ class SnailRacingApi(remote.Service):
             won = query.filter(Score.won == True).count()
             rankings.append(RankingForm(player=player.username,
                                         number_games=number_game, won=won))
-        sorted(rankings, key=lambda rank: rank.won, reverse=True)
-        return ListRanking(items=[rank for rank in rankings])
+        orderRankings = sorted(rankings, key=lambda rank: rank.won,
+                               reverse=True)
+        return ListRanking(items=[rank for rank in orderRankings])
 
 APPLICATION = endpoints.api_server([SnailRacingApi])

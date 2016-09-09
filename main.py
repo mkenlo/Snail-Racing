@@ -2,11 +2,9 @@
 
 """main.py - This file contains handlers that are called by taskqueue and/or
 cronjobs."""
-import logging
 import webapp2
 from google.appengine.api import mail, app_identity
-from api import SnailRacingApi
-from models import Game, Plyer
+from models import Game
 import utils
 
 
@@ -36,18 +34,7 @@ class SendReminderEmail(Handler):
                 self.send_mail(body, subject, game.opponent.get().email)
 
 
-class NotifyPlayer(Handler):
-
-    def get(self, urlsafekey, username):
-        """Send a notification to a player when its opponent has played"""
-        player = utils.get_by_username(username)
-        subject = "Notification: Your opponent just made a move"
-        body = """Hello %s, It's your time to make a move on game
-        %s """ % (username, urlsafekey)
-        self.send_mail(body, subject, player.email)
-
 app = webapp2.WSGIApplication([
-    ('/crons/send_reminder', SendReminderEmail),
-    ('/crons/notify_player', NotifyPlayer)
+    ('/crons/send_reminder', SendReminderEmail)
 
 ], debug=True)

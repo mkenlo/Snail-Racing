@@ -14,3 +14,8 @@ indexes:
   properties:
   - name: player
   - name: status
+
+- kind: GameHistory
+  properties:
+  - name: game
+  - name: date
