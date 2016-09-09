@@ -24,6 +24,12 @@ class Game(ndb.Model):
         self.status = "over"
         self.put()
 
+    def toForm(self):
+        return HistoryForm(player=self.player.get().username,
+                           opponent=self.opponent.get().username,
+                           created="{}".format(self.created),
+                           urlsafekey=self.key.urlsafe())
+
 
 class Position(ndb.Model):
     """ This class describes a player"""
@@ -40,12 +46,6 @@ class Score(ndb.Model):
     score = ndb.IntegerProperty(default=0)
     won = ndb.BooleanProperty(default=False)
 
-    def toForm(self):
-        return HistoryForm(player=self.player.get().username,
-                           score=self.score,
-                           created="{}".format(self.game.get().created))
-
-
 class GameHistory(ndb.Model):
     game = ndb.KeyProperty(kind='Game')
     message = ndb.StringProperty()
@@ -56,8 +56,8 @@ class GameHistory(ndb.Model):
         ).username, self.game.get().opponent.get().username)
         return GameHistoryForm(player_opponent=players,
                                message=self.message,
-                               date=str(self.date))
-
+                               date=str(self.date),
+                               urlsafekey=self.game.urlsafe())
 
 
 # Messages classes for Request and Response
@@ -91,8 +91,9 @@ class MessageForm(messages.Message):
 
 class HistoryForm(messages.Message):
     player = messages.StringField(1)
-    score = messages.IntegerField(2)
+    opponent = messages.StringField(2)
     created = messages.StringField(3)
+    urlsafekey = messages.StringField(4)
 
 
 class ListHistoryForm(messages.Message):
@@ -103,6 +104,7 @@ class GameHistoryForm(messages.Message):
     player_opponent = messages.StringField(1)
     message = messages.StringField(2)
     date = messages.StringField(3)
+    urlsafekey = messages.StringField(4)
 
 
 class ListGameHistory(messages.Message):

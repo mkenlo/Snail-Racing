@@ -1,25 +1,12 @@
 import endpoints
-import hashlib
 import random
 import utils
-from itertools import groupby
-from models import PlayerForm
-from models import GameForm
-from models import NewGameForm
-from models import NewGameForm
-from models import MakeMoveForm
-from models import MessageForm
-from models import GameHistoryForm
-from models import HistoryForm
-from models import ListHistoryForm
-from models import ListGameHistory
-from models import RankingForm
-from models import ListRanking
-from models import Player
-from models import Game
-from models import GameHistory
-from models import Score
-from models import Position
+from models import (
+    PlayerForm, GameForm, NewGameForm, MakeMoveForm, MessageForm,
+    ListHistoryForm, ListGameHistory, RankingForm, ListRanking,
+    Player, Game, GameHistory, Score, Position
+)
+from google.appengine.api import taskqueue
 from protorpc import message_types
 from protorpc import messages
 from protorpc import remote
@@ -59,7 +46,7 @@ class SnailRacingApi(remote.Service):
     Each move computes a score for the player"""
 
     def _defaultPlayer(self):
-        """ This function create a default player in order to have 2 players."""
+        """This function create a default player in order to have 2 players."""
         computer = Player(username='computer',
                           email="computer@snailRacing.com")
         computer.put()
@@ -69,7 +56,8 @@ class SnailRacingApi(remote.Service):
         Input: game in which the player is playing, the player and its score
         Output: The player's score is updated """
         player_score = Score.query(Score.game == game.key,
-                                   Score.player == player_position.player).get()
+                                   Score.player == player_position.player
+                                   ).get()
         player_score.score += player_position.position
         player_score.put()
 
@@ -88,7 +76,13 @@ class SnailRacingApi(remote.Service):
                 'A User with that name already exists!')
 
         Player(username=username, email=email).put()
-        return MessageForm(message="Welcome Player %s. Enjoy racing!!! " % username)
+
+        # create default player if not exist
+        if not Player.query(Player.username == "computer").get():
+            self._defaultPlayer()
+
+        return MessageForm(
+            message="Welcome Player %s. Enjoy racing!!!" % username)
 
     @endpoints.method(NEW_GAME_REQUEST, NewGameForm, path='new_game',
                       http_method='POST')
@@ -97,10 +91,6 @@ class SnailRacingApi(remote.Service):
         Input: Two Usernames; Only The first is required,
         if the second is not given, the first player will be playing
         with an Automate (Computer)"""
-        computer = Player.query(Player.username == "computer").get()
-        if not computer:
-            self._defaultPlayer()
-
         player = utils.get_by_username(request.player)
 
         if not request.opponent:
@@ -125,9 +115,10 @@ class SnailRacingApi(remote.Service):
                       http_method="GET")
     def roll_dice(self, request):
         """ The function renders a random integer between 1 and 6.  """
-        return MessageForm(message="{}".format(random.randint(1, 6)))
+        return MessageForm(message=str(random.randint(1, 6)))
 
-    @endpoints.method(FIRSTPLAYER_REQUEST, MessageForm, path='set_first_player',
+    @endpoints.method(FIRSTPLAYER_REQUEST, MessageForm,
+                      path='set_first_player',
                       http_method='PUT')
     def set_firstPlayer(self, request):
         """ This function sets the first player of a given game.
@@ -147,7 +138,7 @@ class SnailRacingApi(remote.Service):
         """ This function enables a player to move during the race.
         Input: game safe url key, player username, number render by the Dice"""
 
-        if not request.dice in diceValue:
+        if request.dice not in diceValue:
             raise endpoints.NotFoundException(
                 'Invalid Dice Number')
         game = utils.get_by_urlsafe(request.game_urlsafekey, Game)
@@ -155,10 +146,9 @@ class SnailRacingApi(remote.Service):
             raise endpoints.NotFoundException(
                 'This game is either over or save!! Resume if saved')
 
-        #player = utils.get_by_username(request.player)
-
         player = Position.query(Position.game == game.key,
-                                Position.player == utils.get_by_username(request.player).key).get()
+                                Position.player == utils.get_by_username(
+                                    request.player).key).get()
         if not player.isPlayingNow:
             raise endpoints.NotFoundException(
                 'This player does not have token to play now')
@@ -167,12 +157,13 @@ class SnailRacingApi(remote.Service):
         # PLAYER
         if game.player == player.player:
             opponent = Position.query(
-                Position.game == game.key, Position.player == game.opponent).get()
+                Position.game == game.key, Position.player == game.opponent
+            ).get()
         elif game.opponent == player.player:
             opponent = Position.query(
-                Position.game == game.key, Position.player == game.player).get()
-        # opponent = Position.query(Position.game == game.key, Position.player == opp).get()
-
+                Position.game == game.key, Position.player == game.player
+            ).get()
+        # IMPORTANT !!!!
         # player and opponent are key objects in POSITION model
 
         # change position
@@ -203,10 +194,15 @@ class SnailRacingApi(remote.Service):
             game_status = "GAME OVER, YOU WON THE RACE!!!!!"
 
         opponent.put()
+        # Notify the opponent
+        taskqueue.add(url='/crons/notify_player',
+                      params={'username': opponent.player.get().username},
+                      name="Notify_Player")
         return MakeMoveForm(player=request.player, dice=request.dice,
                             position=player.position,
                             score=Score.query(
-                                Score.game == game.key, Score.player == player.player).get().score,
+                                Score.game == game.key,
+                                Score.player == player.player).get().score,
                             status=game_status)
 
     @endpoints.method(PlayerForm, ListHistoryForm, path="get_user_games",
@@ -214,8 +210,10 @@ class SnailRacingApi(remote.Service):
     def get_user_games(self, request):
         """  This function returns all games of a given player."""
         player = utils.get_by_username(request.username)
-        user_games = Score.query(Score.player == player.key)
-        return ListHistoryForm(history=[games.toForm() for games in user_games])
+        user_games = Game.query(Game.player == player.key).filter(
+            Game.status != "over")
+        return ListHistoryForm(
+            history=[games.toForm() for games in user_games])
 
     @endpoints.method(GameForm, MessageForm, path='cancel_game',
                       http_method='DELETE')
@@ -223,8 +221,11 @@ class SnailRacingApi(remote.Service):
         """This function delete a game.
         Input: Game safe url key"""
         game = utils.get_by_urlsafe(request.urlsafekey, Game)
+        if game.status == "over":
+            raise endpoints.ConflictException(
+                'Cannot delete a Game over')
         for hist in GameHistory.query(GameHistory.game == game.key):
-        	hist.key.delete()
+            hist.key.delete()
         game.key.delete()
         return MessageForm(message=" Game cancelled")
 
@@ -256,12 +257,16 @@ class SnailRacingApi(remote.Service):
             raise endpoints.ConflictException(
                 'Cannot resume a Game over')
 
-    @endpoints.method(GAMEHISTORY_REQUEST, ListGameHistory, path='get_game_history',
+    @endpoints.method(GAMEHISTORY_REQUEST, ListGameHistory,
+                      path='get_game_history',
                       http_method='GET')
     def get_game_history(self, request):
         """This function returns all moves in a game."""
         game = utils.get_by_urlsafe(request.game_urlsafekey, Game)
-        return ListGameHistory(history=[game.toForm() for game in GameHistory.query(GameHistory.game == game.key)])
+        games = GameHistory.query(
+            GameHistory.game == game.key).order(GameHistory.date)
+        return ListGameHistory(
+            history=[game.toForm() for game in games])
 
     @endpoints.method(message_types.VoidMessage, ListRanking,
                       path='get_user_ranking', http_method='GET')

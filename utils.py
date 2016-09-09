@@ -1,5 +1,4 @@
 import re
-import logging
 from google.appengine.ext import ndb
 import endpoints
 from models import Player
@@ -45,20 +44,20 @@ def get_by_urlsafe(urlsafe, model):
 
 
 def move(position, dice):
-	print "move player"
-	previous = position
-	if position in TRIPLE:
-		position += dice * 3
-	elif position in DOUBLE:
-		position += dice * 2
-	elif position in NULL:
-		if dice == 6:
-			position += dice
-	else:
-		position += dice
-	if position > 100:
-		position = previous
-	return position
+    print "move player"
+    previous = position
+    if position in TRIPLE:
+        position += dice * 3
+    elif position in DOUBLE:
+        position += dice * 2
+    elif position in NULL:
+        if dice == 6:
+            position += dice
+    else:
+        position += dice
+    if position > 100:
+        position = previous
+    return position
 
 
 def valid_username(username):
@@ -74,8 +73,8 @@ def valid_email(email):
 
 
 def get_by_username(username):
-	player = Player.query(Player.username == username).get()
-	if not player:
-		raise endpoints.ConflictException(
-			'No Player %s exists!' % username)
-	return player
+    player = Player.query(Player.username == username).get()
+    if not player:
+        raise endpoints.ConflictException(
+            'No Player %s exists!' % username)
+    return player
