@@ -2,9 +2,11 @@
 
 """main.py - This file contains handlers that are called by taskqueue and/or
 cronjobs."""
+import logging
 import webapp2
 from google.appengine.api import mail, app_identity
-from models import Game
+from api import SnailRacingApi
+from models import Game, Plyer
 import utils
 
 
